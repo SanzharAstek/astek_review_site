@@ -1,62 +1,29 @@
-from flask import Flask, render_template, request, redirect, url_for
-import sqlite3
+from flask import Flask, render_template, request, jsonify
+from google_sheets import save_review
 
 app = Flask(__name__)
-app.config['DATABASE'] = "reviews.db"  # Указываем базу данных
 
-import os
-print(f"Используется база данных: {os.path.abspath(app.config['DATABASE'])}")
-
-
-# Функция для инициализации базы данных
-def init_db():
-    with sqlite3.connect(app.config['DATABASE']) as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS reviews (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                specialist TEXT,
-                city TEXT,
-                rating INTEGER,
-                review TEXT
-            )
-        ''')
-        conn.commit()
-
-# Главная страница
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Обработчик формы для добавления отзыва
 @app.route('/submit_review', methods=['POST'])
 def submit_review():
-    name = request.form.get('name')
-    specialist = request.form.get('specialist')
-    city = request.form.get('city')
-    rating = request.form.get('rating')
-    review = request.form.get('review')
+    data = request.json
+    name = data.get("name")
+    specialist = data.get("specialist")
+    city = data.get("city")
+    rating = data.get("rating")
+    review = data.get("review")
 
-    print(f"Полученные данные: {name}, {specialist}, {city}, {rating}, {review}")  # Отладка
+    if not name or not review:
+        return jsonify({"error": "Имя и отзыв обязательны"}), 400
 
-    if name and review:  # Проверка обязательных полей
-        try:
-            with sqlite3.connect(app.config['DATABASE']) as conn:
-                cursor = conn.cursor()
-                cursor.execute("INSERT INTO reviews (name, specialist, city, rating, review) VALUES (?, ?, ?, ?, ?)",
-                               (name, specialist, city, rating, review))
-                conn.commit()
-                print("Отзыв успешно добавлен!")  # Отладка
-        except Exception as e:
-            with open("error_log.txt", "a", encoding="utf-8") as log:
-                log.write(f"Ошибка при сохранении отзыва: {e}\n")
-            print(f"Ошибка при сохранении отзыва: {e}")  # Вывод ошибки в консоль
-
-    return redirect(url_for('index'))
+    try:
+        save_review(name, specialist, city, rating, review)
+        return jsonify({"message": "Отзыв успешно сохранён!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    init_db()  # Запускаем инициализацию базы при старте
-    import os
-port = int(os.environ.get("PORT", 5000))  # Получаем порт от Render или используем 5000
-app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(debug=True, host="0.0.0.0", port=5000)

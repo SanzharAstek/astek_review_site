@@ -1,0 +1,96 @@
+from flask import Flask, render_template, request, redirect, url_for
+import psycopg2
+import os
+import requests
+from datetime import datetime
+
+app = Flask(__name__)
+
+# Берем URL базы из переменной окружения
+DATABASE_URL = os.getenv("DATABASE_URL")
+MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/tsa723t5kj74hvay3h4hrof9ol9tfo4g"  # Вставь ссылку на Webhook из Make
+
+if not DATABASE_URL:
+    raise ValueError("Ошибка: не установлена переменная окружения DATABASE_URL!")
+
+# Подключение к базе PostgreSQL
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL, sslmode="require")
+
+# Функция для инициализации базы данных
+def init_db():
+    with get_db_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS reviews (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT,
+                    specialist TEXT,
+                    city TEXT,
+                    rating INTEGER,
+                    review TEXT
+                )
+            ''')
+            conn.commit()
+
+# Функция для отправки отзыва в Make (Google Sheets)
+def send_to_make(name, specialist, city, rating, review):
+    data = {
+        "name": name,
+        "specialist": specialist,
+        "city": city,
+        "rating": rating,
+        "review": review,
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Добавляем дату
+    }
+    try:
+        response = requests.post(MAKE_WEBHOOK_URL, json=data)
+        response.raise_for_status()
+        print("✅ Данные успешно отправлены в Make!")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Ошибка отправки в Make: {e}")
+
+# Главная страница
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+# Обработчик формы для добавления отзыва
+@app.route('/submit_review', methods=['POST'])
+def submit_review():
+    name = request.form.get('name')
+    specialist = request.form.get('specialist')
+    city = request.form.get('city')
+    rating = request.form.get('rating')
+    review = request.form.get('review')
+
+    print(f"Полученные данные: {name}, {specialist}, {city}, {rating}, {review}")  # Отладка
+
+    if name and review:  # Проверка обязательных полей
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        "INSERT INTO reviews (name, specialist, city, rating, review) VALUES (%s, %s, %s, %s, %s)",
+                        (name, specialist, city, rating, review)
+                    )
+                    conn.commit()
+                    print("✅ Отзыв успешно добавлен в базу!")
+
+            # Отправляем данные в Google Sheets через Make
+            send_to_make(name, specialist, city, rating, review)
+
+        except Exception as e:
+            with open("error_log.txt", "a", encoding="utf-8") as log:
+                log.write(f"Ошибка при сохранении отзыва: {e}\n")
+            print(f"❌ Ошибка при сохранении отзыва: {e}")
+
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    init_db()  # Запускаем инициализацию базы при старте
+    print(f"🔗 Используется база данных: {DATABASE_URL}")
+    port = int(os.environ.get("PORT", 5000))  # Получаем порт от Render или используем 5000
+    app.run(host="0.0.0.0", port=port, debug=False)
+
+
