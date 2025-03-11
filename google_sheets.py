@@ -5,6 +5,7 @@ from google.oauth2.service_account import Credentials
 
 # Авторизация в Google API
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+print("GOOGLE_CREDENTIALS:", os.getenv("GOOGLE_CREDENTIALS"))
 credentials_info = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
 creds = Credentials.from_service_account_info(credentials_info, scopes=["https://www.googleapis.com/auth/spreadsheets"])
 client = gspread.authorize(creds)
