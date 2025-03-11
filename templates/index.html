@@ -33,15 +33,15 @@
             color: gray;
         }
         .social-icons {
-            display: flex;
-            justify-content: center;
-            margin-top: 10px;
+            position: absolute;
+            top: 20px;
+            right: 20px;
         }
         .social-icons a {
             text-decoration: none;
             color: red;
             font-size: 20px;
-            margin: 0 10px;
+            margin: 0 5px;
         }
         .review-form {
             background-color: #f5f5f5;
@@ -78,21 +78,6 @@
         }
         .rating {
             margin-top: 20px;
-        }
-        @media (max-width: 768px) {
-            .logo {
-                flex-direction: column;
-                align-items: center;
-            }
-            .social-icons {
-                position: static;
-                display: flex;
-                justify-content: center;
-                margin-top: 10px;
-            }
-            .social-icons a {
-                margin: 0 10px;
-            }
         }
     </style>
 </head>
@@ -144,6 +129,28 @@
         <p><strong>+7 7172 94-44-44</strong></p>
         <p><strong>info@astek.kz</strong></p>
     </div>
+    
+    <script>
+        document.getElementById("reviewForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            
+            const data = {
+                name: document.getElementById("name").value,
+                specialist: document.getElementById("specialist").value,
+                city: document.getElementById("city").value,
+                rating: document.getElementById("rating").value,
+                review: document.getElementById("review").value
+            };
+            
+            fetch("/submit_review", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message || data.error))
+            .catch(error => console.error("Ошибка:", error));
+        });
+    </script>
 </body>
 </html>
-
