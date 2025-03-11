@@ -3,7 +3,7 @@ from google.oauth2.service_account import Credentials
 
 # Авторизация в Google API
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_file("credentials.json", scopes=["https://www.googleapis.com/auth/spreadsheets"])
+creds = Credentials.from_service_account_file("flask-google-sheets-123456.json", scopes=["https://www.googleapis.com/auth/spreadsheets"])
 client = gspread.authorize(creds)
 
 # Открываем таблицу
